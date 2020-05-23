@@ -9,7 +9,10 @@ import os
 from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
-from Bio.Alphabet import IUPAC
+from Bio.SeqUtils import GC
+from Bio.Alphabet import *
+import pandas as pd
+import numpy as np
 
 ##--- File Paths ---##
 module_path = os.path.abspath(os.path.dirname(__file__)) #code\MHC-peptide_prediction
@@ -61,4 +64,112 @@ def fastaLength(path):
     for key in seqs:
         length = length + len(seqs[key])
     return length
+
+def fastaSeqsAttribute(path):
+    '''Find the IDs, lengths and GC contents of all the sequences in a fasta file.
+    path: string
+        The path of the fasta file
+
+    Return:
+    ------
+    combined: DataFrame
+        The attributes of all the sequences of the fasta file.
+    '''
+    IDs = []
+    lengths = []
+    descriptions = []
+    GCs = []
+    with open(os.path.join(path), "rU") as handle:
+        for record in SeqIO.parse(handle, "fasta"):
+            IDs.append(record.id)
+            lengths.append(len(record.seq))
+            GCs.append(round(GC(record.seq), 2))
+            descriptions.append(record.description)
+    
+    combined = np.array([IDs, lengths, GCs, descriptions])
+    combined = combined.T
+    df = pd.DataFrame(combined, columns=['sequenceID', 'length', 'GC', 'description'])
+    return df
+
+def fastaSpecifyAlphabet(path, alphabet):
+    '''Read and specify the alphabet of all the sequences in a fasta file.
+    path: string
+        The path of the fasta file
+    alphabet: Bio.Alphabet
+        The alphabet to be specified to the sequences.
+    
+    Return:
+    ------
+    seqs: dictionary{seqID: Seq}
+        The complemented sequences of all DNA sequences in a fasta file.
+    '''
+
+def fastaComplement(path, out=None):
+    '''Find the complements of DNA sequences in a fasta file.
+    path: string
+        The path of the fasta file
+    out: string
+        output filename, containing '.fasta' or not is both acceptable
+        output format: FASTA
+
+    Return:
+    ------
+    seqs: dictionary{seqID: Seq}
+        The complemented sequences of all DNA sequences in a fasta file.
+    '''
+    seqs = readFASTA(path)
+    for key in seqs:
+        seqs[key] = seqs[key].complement()
+    if out != None:
+        outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
+        SeqIO.write(seqs, outFile, "fasta")
+    return seqs
+
+def fastaReverse(path, out=None):
+    '''Find the reverse complements of DNA sequences in a fasta file.
+    path: string
+        The path of the fasta file
+    out: string
+        output filename, containing '.fasta' or not is both acceptable
+        output format: FASTA
+
+    Return:
+    ------
+    seqs: dictionary{seqID: Seq}
+        The reverse-complemented sequences of all DNA sequences in a fasta file.
+    '''
+    seqs = readFASTA(path)
+    for key in seqs:
+        seqs[key] = seqs[key][::-1]
+    
+    if out != None:
+        outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
+        SeqIO.write(seqs, outFile, "fasta")
+    return seqs
+
+def fastaReverseComplement(path, out=None):
+    '''Find the reverse of DNA sequences in a fasta file.
+    path: string
+        The path of the fasta file
+    out: string
+        output filename, containing '.fasta' or not is both acceptable
+        output format: FASTA
+
+    Return:
+    ------
+    seqs: dictionary{seqID: Seq}
+        The reversed sequences of all DNA sequences in a fasta file.
+    '''
+    seqs = readFASTA(path)
+    for key in seqs:
+        seqs[key] = seqs[key].reverse_complement()
+    
+    if out != None:
+        outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
+        SeqIO.write(seqs, outFile, "fasta")
+    return seqs
+
+print(fastaSeqsAttribute(os.path.join(seq_path, "VACV_virus.fasta")))
+# fastaReverseComplement(os.path.join(seq_path, "E.setchuanus_cytb.fasta"))
+
 
