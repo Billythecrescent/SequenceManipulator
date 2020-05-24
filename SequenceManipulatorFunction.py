@@ -10,7 +10,8 @@ from Bio import SeqIO
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio.SeqUtils import GC
-from Bio.Alphabet import *
+from Bio.Alphabet import IUPAC
+from Bio.Alphabet import generic_nucleotide
 import pandas as pd
 import numpy as np
 
@@ -91,18 +92,36 @@ def fastaSeqsAttribute(path):
     df = pd.DataFrame(combined, columns=['sequenceID', 'length', 'GC', 'description'])
     return df
 
-def fastaSpecifyAlphabet(path, alphabet):
+def fastaSpecifyAlphabet(path, alphabet=None):
     '''Read and specify the alphabet of all the sequences in a fasta file.
     path: string
         The path of the fasta file
-    alphabet: Bio.Alphabet
-        The alphabet to be specified to the sequences.
-    
+    alphabet: Bio.Alphabet.IUPAC
+        The IUPAC alphabet to be specified to the sequences.
+
+    RUN fastaSpecifyAlphabet(path,alphabet=None) for available alphabet help.
+
     Return:
     ------
     seqs: dictionary{seqID: Seq}
         The complemented sequences of all DNA sequences in a fasta file.
     '''
+    if alphabet == None:
+        print("Available alphabets: IUPAC.ambiguous_dna, IUPAC.unambiguous_dna, IUPAC.ambiguous_rna, IUPAC.unambiguous_rna, IUPAC.protein, IUPAC.extended_protein, generic_nucleotide, SingleLetterAlphabet, NucleotideAlphabet, ProteinAlphabet, DNAAlphabet, RNAAlphabet.")
+        return
+    sequences = {}
+    with open(os.path.join(path), "rU") as handle:
+        for record in SeqIO.parse(handle, "fasta"):
+            seq = record.seq
+            try:
+                seq.alphabet = alphabet
+            except AttributeError:
+                
+                return
+            else:
+                sequences[record.id] = seq
+    print(sequences)
+    return sequences
 
 def fastaComplement(path, out=None):
     '''Find the complements of DNA sequences in a fasta file.
@@ -169,7 +188,117 @@ def fastaReverseComplement(path, out=None):
         SeqIO.write(seqs, outFile, "fasta")
     return seqs
 
-print(fastaSeqsAttribute(os.path.join(seq_path, "VACV_virus.fasta")))
-# fastaReverseComplement(os.path.join(seq_path, "E.setchuanus_cytb.fasta"))
+def fastaTranscribe(path, transcribe_options=None, out=None):
+    '''Transcribe all the sequences in a fasta file. Those are seemed as coding sequences
+    if no transcribe_options are given. Users can specify whether the sequences are coding
+    sequences or template sequences by transcribe_options. 'c' or 'C' means coding sequence,
+    and 't' or 'T' means template sequence. For example, ['C', 'C', 'T'] means that there 
+    are three sequences and first two are coding sequences and the last is a template sequence.
+
+    path: string
+        The path of the fasta file
+    transcribe_options: list or tuple
+        Specify the sequences in the file as coding sequence ('C' or 'c') or template sequence
+        ('T' or 't'). ['C', 'C', 'T'] for example.
+    out: string
+        output filename, containing '.fasta' or not is both acceptable
+        output format: FASTA
+
+    Return:
+    ------
+    seqs: dictionary{seqID: Seq}
+        The transcribed sequences of all RNA sequences in a fasta file.
+    '''
+    seqs = readFASTA(path)
+    RNAs = {}
+    if transcribe_options == None:
+        for key in seqs:
+            rna = seqs[key].transcribe()
+            RNAs[key] = rna
+    elif type(transcribe_options) != list and type(transcribe_options) != tuple:
+        print("ERROR: Please specify the transcribe_options by list or tuple.")
+        return
+    elif len(transcribe_options) != len(seqs):
+        print("ERROR: The length of transcribe_options %d is not consistent with the number of sequences %d" %(len(transcribe_options), len(seqs)))
+        return
+    else:
+        with open(os.path.join(path), "rU") as handle:
+            for i, record in enumerate(SeqIO.parse(handle, "fasta")):
+                key = record.id
+                seq = record.seq
+                if transcribe_options[i] == 'T' or transcribe_options[i] == 't':
+                    rna = seq.reverse_complement().transcribe()
+                elif transcribe_options[i] == 'C' or transcribe_options[i] == 'c':
+                    rna = seq.transcribe()
+                else:
+                    print("ERROR: Illegal character %c in transcribe_options list" %transcribe_options[i])
+                    return
+                RNAs[key] = rna
+    #ouput FASTA file
+    if out != None:
+        outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
+        SeqIO.write(RNAs, outFile, "fasta")
+
+    return RNAs
+
+def fastaReverseTrasncribe(path, transcribe_options=None, out=None):
+    '''Reverse-transcribe all the sequences in a fasta file. Sequences can be reverse-transcribed 
+    to coding sequences or template sequences by specifying the transcribe-options. If no given, 
+    this function will convert the RNAs to coding sequences. In transcribe_options. 'c' or 'C' 
+    means coding sequence, and 't' or 'T' means template sequence. For example, ['C', 'C', 'T'] 
+    means that there are three sequences and first two are to coding sequences and the last is to 
+    a template sequence.
+
+    path: string
+        The path of the fasta file
+    transcribe_options: list or tuple
+        Specify the RNA sequences the RNA sequences in the file are reverse-transcribed to.
+        Whether to coding sequence ('C' or 'c') or to template sequence ('T' or 't'). 
+        ['C', 'C', 'T'] for example.
+    out: string
+        output filename, containing '.fasta' or not is both acceptable
+        output format: FASTA
+
+    Return:
+    ------
+    seqs: dictionary{seqID: Seq}
+        The transcribed sequences of all DNA sequences in a fasta file.
+    '''
+    seqs = readFASTA(path)
+    DNAs = {}
+    if transcribe_options == None:
+        for key in seqs:
+            dna = seqs[key].back_transcribe()
+            DNAs[key] = dna
+    elif type(transcribe_options) != list and type(transcribe_options) != tuple:
+        print("ERROR: Please specify the transcribe_options by list or tuple.")
+        return
+    elif len(transcribe_options) != len(seqs):
+        print("ERROR: The length of transcribe_options %d is not consistent with the number of sequences %d" %(len(transcribe_options), len(seqs)))
+        return
+    else:
+        with open(os.path.join(path), "rU") as handle:
+            for i, record in enumerate(SeqIO.parse(handle, "fasta")):
+                key = record.id
+                seq = record.seq
+                if transcribe_options[i] == 'T' or transcribe_options[i] == 't':
+                    dna = seq.back_transcribe().reverse_complement()
+                elif transcribe_options[i] == 'C' or transcribe_options[i] == 'c':
+                    dna = seq.back_transcribe()
+                else:
+                    print("ERROR: Illegal character %c in transcribe_options list" %transcribe_options[i])
+                    return
+                DNAs[key] = dna
+    #ouput FASTA file
+    if out != None:
+        outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
+        SeqIO.write(DNAs, outFile, "fasta")
+
+    print(DNAs)
+    return DNAs
+
+# print(fastaSeqsAttribute(os.path.join(seq_path, "VACV_virus.fasta")))
+# print(fastaNumber(os.path.join(seq_path, "E.setchuanus_cytb.fasta")))
+# fastaTranscribe(os.path.join(seq_path, "E.setchuanus_cytb.fasta"), transcribe_options=['T']*27)
 
 
