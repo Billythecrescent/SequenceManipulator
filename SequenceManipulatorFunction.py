@@ -294,11 +294,51 @@ def fastaReverseTrasncribe(path, transcribe_options=None, out=None):
         outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
         SeqIO.write(DNAs, outFile, "fasta")
 
-    print(DNAs)
     return DNAs
+
+def fastaTranslate(path, translate_table=None, first_stop=False, out=None):
+    '''Translate the RNA or DNA sequences of a fasta file to amino-acid sequences.
+    path: string
+        The path of the fasta file
+    translate_table: string
+        The name or index of translate table in NCBI, please visit 
+        https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for more details.
+    first_stop: Boolean
+        Whether stop translate after the first stope codon.
+        Default: False
+    out: string
+        output filename, containing '.fasta' or not is both acceptable
+        output format: FASTA
+
+    Return:
+    ------
+    Proteins: dictionary{seqID: Seq}
+        The tranlated sequences of all DNA or RNA sequences in a fasta file.
+    '''
+    seqs = readFASTA(path)
+    Proteins = {}
+    if translate_table == None:
+        for key in seqs:
+            protein = seqs[key].translate(to_stop=first_stop)
+            Proteins[key] = protein
+    else:
+        for key in seqs:
+            try:
+                protein = seqs[key].translate(table=translate_table, to_stop=first_stop)
+            except KeyError:
+                print("translate table sepcified is not valid, please check https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi for details")
+                return
+            else:
+                Proteins[key] = protein
+    
+    if out != None:
+        outFile = out if out.split('.')[-1] == 'fasta' else out + ".fasta"
+        SeqIO.write(Proteins, outFile, "fasta")
+    print(Proteins)
+    return Proteins
 
 # print(fastaSeqsAttribute(os.path.join(seq_path, "VACV_virus.fasta")))
 # print(fastaNumber(os.path.join(seq_path, "E.setchuanus_cytb.fasta")))
-# fastaTranscribe(os.path.join(seq_path, "E.setchuanus_cytb.fasta"), transcribe_options=['T']*27)
+# fastaTranslate(os.path.join(seq_path, "E.setchuanus_cytb.fasta"), translate_table="ertebrate Mitochondrial")
 
 

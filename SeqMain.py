@@ -40,5 +40,5 @@ def main(ifFile, inputStr, outputFile, index=-1, inputFormat='fasta', outputForm
             print("*   Your choose all sequences in the file   *")    
 
     if SingleFlag:
-        validFunction = ["SequenceLength", "fastaSeqsAttribute", "Complement", "ReverseComplement", "Transcription", "Translation"]
+        validFunction = ["SequenceLength", "fastaSeqsAttribute", "Complement", "ReverseComplement", "fastaTranscribe", "fastaReverseTrasncribe", "fastaTranslate"]
 
